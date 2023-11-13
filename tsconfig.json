@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+      "emitDecoratorMetadata": true,
+      "experimentalDecorators": true,
+      "module": "NodeNext",
+      "esModuleInterop": true,
+      "noEmitOnError": true,
+      "noImplicitAny": false,
+      "removeComments": false,
+      "sourceMap": true,
+      "target": "ES2015",
+      "moduleResolution": "NodeNext",
+      "outDir": "./build/"
+  },
+  "exclude": [
+      "node_modules",
+      "typings/index",
+      "typings/index.d.ts"
+  ]
+}
