@@ -8,6 +8,7 @@ import os from "os"
 import { Server } from "http";
 import { RedisClientType, createClient } from "redis";
 import IdeaDoc from "./IdeiaDoc.js";
+import DocStruct from "./DocStruct.js";
 
 export class IdeaServer {
   
@@ -62,7 +63,11 @@ export class IdeaServer {
 
     app.post("/doc/create", express.json(), (req, res)=>{
        let ownerId = req.body.userId
-       let newAutomergeDoc = this.repo.create()
+       let newAutomergeDoc = this.repo.create<DocStruct>()
+       newAutomergeDoc.change((d) => {
+        d.title = "Novo Documento"
+        d.content = ""
+       })
        let doc : IdeaDoc = {
         document_id: newAutomergeDoc.documentId,
         owner: ownerId,
