@@ -3,4 +3,9 @@
 
 import { IdeaServer } from "./server.js"
 
-new IdeaServer()
+const server = new IdeaServer()
+
+server.start().catch((err)=>{
+    console.log("error starting server :" + err)
+})
+
