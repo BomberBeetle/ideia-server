@@ -17,9 +17,11 @@
     "@automerge/automerge-repo": "^1.0.17",
     "@automerge/automerge-repo-network-websocket": "^1.0.17",
     "@types/ws": "^8.5.9",
+    "cors": "^2.8.5",
     "express": "^4.18.2",
     "glob": "^10.3.10",
     "redis": "^4.6.10",
+    "uuid": "^9.0.1",
     "ws": "^8.14.2"
   },
   "devDependencies": {

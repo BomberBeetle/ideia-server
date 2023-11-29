@@ -9,6 +9,8 @@ import { Server } from "http";
 import { RedisClientType, createClient } from "redis";
 import IdeaDoc from "./IdeiaDoc.js";
 import DocStruct from "./DocStruct.js";
+import {v4} from "uuid"
+import cors from "cors"
 
 export class IdeaServer {
   
@@ -53,9 +55,60 @@ export class IdeaServer {
 
     const app = express()
     app.use(express.static("public"))
+    app.use(cors());
 
     const PORT =
     process.env.PORT !== undefined ? parseInt(process.env.PORT) : 3030
+
+    app.post("/register",express.json(), (req, res) => {
+      if(!!req.body.email && !!req.body.password){
+        this.redisClient.keys("users:*").then(async (keys)=>{
+          for(let i = 0; i<keys.length; i++){
+            let mail = await this.redisClient.get(`${keys[i]}:email`);
+            if(mail == req.body.email){
+              res.sendStatus(403);
+              return;
+            }
+          }
+          let newId = v4();
+          this.redisClient.set(`users:${newId}:password`, req.body.password)
+          this.redisClient.set(`users:${newId}:email`, req.body.email)
+          this.redisClient.set(`users:${newId}`, newId)
+          res.json({
+            id: newId
+          })
+        })
+        
+      }
+      else{
+        res.sendStatus(403)
+      }
+    })
+
+    app.post("/login",express.json(), (req,res) => {
+      if(!!req.body.email && !!req.body.password){
+        this.redisClient.keys("users:*").then(async (keys)=>{
+          for(let i = 0; i<keys.length; i++){
+            let mail = await this.redisClient.get(`${keys[i]}:email`);
+            if(mail == req.body.email){
+              let pass = await this.redisClient.get(`${keys[i]}:password`);
+              if(pass == req.body.password){
+                let idUs = await this.redisClient.get(`${keys[i]}`)
+                res.json({
+                  id: idUs
+                })
+                return;
+              }
+            }
+          }
+          res.sendStatus(403)
+          return;
+        }).catch((err) => {
+          res.sendStatus(500)
+        })  
+      }
+      
+    })
 
     app.get("/", (req, res) => {
       res.send(`Server running`)
@@ -102,8 +155,8 @@ export class IdeaServer {
 
     })
 
-    app.get("/doc/all", express.json(), (req, res)=> {
-      let ownerId = req.body.userId
+    app.get("/doc/all", (req, res)=> {
+      let ownerId = req.params["id"]
       this.redisClient.keys(`docs:${ownerId}:*`).then((keys)=>{
         res.json(keys.map(async (key) => JSON.parse(await this.redisClient.get(key))))
       })
