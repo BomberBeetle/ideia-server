@@ -159,12 +159,42 @@ export class IdeaServer {
       let ownerId = req.get("Owner-Id")
       console.log("all " + ownerId)
       this.redisClient.keys(`docs:${ownerId}:*`).then((keys)=>{
-        Promise.all(keys.map(async (key) => JSON.parse(await this.redisClient.get(key)))).then((docs)=>res.json(docs))
+        Promise.all(keys.map(async (key) => JSON.parse(await this.redisClient.get(key)))).then((docs)=>{
+          let docsWTitle = docs.map((doc)=>{
+            return{
+            title: this.repo.find(doc.document_id).docSync()["title"],
+            document_id: doc.document_id,
+            allowedUserIds: doc.allowedUserIds,
+            owner: doc.owner
+            }
+          })
+          res.json(docsWTitle);
+        })
       })
     })
 
     app.post("/doc/delete", express.json(), (req, res)=>{
-      
+      let ownerId = req.body.ownerId
+      let docId = req.body.document_id
+      console.log(req.body)
+      if(!!ownerId && !!docId){
+        this.redisClient.get(`docs:${ownerId}:${docId}`).then((doc) => {
+          if(!doc){
+            res.sendStatus(400)
+            console.log("doc not found on delete")
+          }
+          else{
+            let doc_obj = JSON.parse(doc)
+            this.redisClient.del(`docs:${ownerId}:${docId}`)
+            this.repo.delete(doc_obj.document_id)
+            res.sendStatus(200)
+          }
+        })
+      } else {
+        res.sendStatus(400)
+        console.log("Invalid args on doc delete")
+        
+      }
     })
 
     this.server = app.listen(PORT, () => {
