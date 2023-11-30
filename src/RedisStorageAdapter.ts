@@ -34,7 +34,7 @@ export class RedisStorageAdapter extends StorageAdapter {
   }
 
   async save(key: StorageKey, data: Uint8Array): Promise<void> {
-    console.log("save")  
+    console.log("save " + key)  
     return new Promise((resolve, reject) => {
         this.client.set(key.join(":"), Buffer.from(data).toString("base64")); //this is probably wrong. TODO: see what string encoding is best for this.
       })

@@ -156,10 +156,15 @@ export class IdeaServer {
     })
 
     app.get("/doc/all", (req, res)=> {
-      let ownerId = req.params["id"]
+      let ownerId = req.get("Owner-Id")
+      console.log("all " + ownerId)
       this.redisClient.keys(`docs:${ownerId}:*`).then((keys)=>{
-        res.json(keys.map(async (key) => JSON.parse(await this.redisClient.get(key))))
+        Promise.all(keys.map(async (key) => JSON.parse(await this.redisClient.get(key)))).then((docs)=>res.json(docs))
       })
+    })
+
+    app.post("/doc/delete", express.json(), (req, res)=>{
+      
     })
 
     this.server = app.listen(PORT, () => {
