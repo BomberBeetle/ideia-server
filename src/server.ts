@@ -122,7 +122,8 @@ export class IdeaServer {
         d.content = ""
        })
        let doc : IdeaDoc = {
-        document_id: newAutomergeDoc.documentId,
+        automerge_id: newAutomergeDoc.documentId,
+        document_id: v4(),
         owner: ownerId,
         allowedUserIds: [ownerId]
        }
@@ -130,10 +131,56 @@ export class IdeaServer {
        res.json(doc)
     })
 
-    app.get("/doc/", express.json(),(req,res)=>{
-      let docId = req.body.document_id;
-      let userId = req.body.userId
-      let ownerId = req.body.ownerId
+    app.post("/add_collab", express.json(), (req, res)=>{
+      let docId = req.body.docId;
+      let userId = req.body.userId;
+      let ownerId = req.body.ownerId;
+      let collabEmail = req.body.collabEmail;
+      this.redisClient.get(`docs:${ownerId}:${docId}`).then(
+        (val)=>{
+          if (val === null){
+            res.sendStatus(404)
+            return
+          }
+          let doc : IdeaDoc = JSON.parse(val);
+          if(doc.owner === userId){
+            this.redisClient.KEYS(`users:*`).then(async (keys)=>{
+              let collabId = undefined;
+              for(let i = 0; i < keys.length; i++){
+                let mail = await this.redisClient.get(`${keys[i]}:email`)
+                if(mail === collabEmail){
+                  collabId = await this.redisClient.get(keys[i]);
+                  break;
+                }
+              }
+              if(collabId){
+                res.sendStatus(200)
+                if(!doc.allowedUserIds.includes(collabId)){
+                  doc.allowedUserIds.push(collabId)
+                  this.redisClient.set(`docs:${doc.owner}:${doc.document_id}`, JSON.stringify(doc));
+                }
+                return;
+              }
+              else{
+                res.sendStatus(404)
+                return;
+              }
+            })
+          }
+          else{
+            res.sendStatus(403)
+          }
+        }
+      ).catch((err)=>{
+        console.log(err)
+        res.sendStatus(500)
+      })
+    })
+
+    app.get("/doc/:docId",(req,res)=>{
+      let docId = req.params.docId;
+      let userId = req.get("User-Id")
+      let ownerId = req.get("Owner-Id")
       this.redisClient.get(`docs:${ownerId}:${docId}`).then(
         (val)=>{
           if (val === null){
@@ -155,15 +202,16 @@ export class IdeaServer {
 
     })
 
-    app.get("/doc/all", (req, res)=> {
+    app.get("/all_docs", (req, res)=> {
       let ownerId = req.get("Owner-Id")
       console.log("all " + ownerId)
       this.redisClient.keys(`docs:${ownerId}:*`).then((keys)=>{
         Promise.all(keys.map(async (key) => JSON.parse(await this.redisClient.get(key)))).then((docs)=>{
           let docsWTitle = docs.map((doc)=>{
             return{
-            title: this.repo.find(doc.document_id).docSync()["title"],
+            title: this.repo.find(doc.automerge_id).docSync()["title"],
             document_id: doc.document_id,
+            automerge_id: doc.automerge_id,
             allowedUserIds: doc.allowedUserIds,
             owner: doc.owner
             }
@@ -186,7 +234,7 @@ export class IdeaServer {
           else{
             let doc_obj = JSON.parse(doc)
             this.redisClient.del(`docs:${ownerId}:${docId}`)
-            this.repo.delete(doc_obj.document_id)
+            this.repo.delete(doc_obj.automerge_id)
             res.sendStatus(200)
           }
         })
